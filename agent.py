@@ -153,11 +153,13 @@ def run_agent(query: str, wardrobe: dict) -> dict:
 
     # Step 4: select the item to use (top result)
     session["selected_item"] = results[0]
+    print(f"\n[DEBUG] selected_item: {session['selected_item']['title']}")
 
     # Step 5: call suggest_outfit() with the selected item and wardrobe
     session["outfit_suggestion"] = suggest_outfit(
         session["selected_item"], wardrobe
     )
+    print(f"\n[DEBUG] outfit_suggestion going into fit card: {session['outfit_suggestion']}")
 
     # Step 6: call create_fit_card() with the outfit suggestion and selected item
     session["fit_card"] = create_fit_card(
