@@ -135,18 +135,18 @@ For each tool, describe the specific failure mode you're handling and what the a
 
 ## A Complete Interaction (Step by Step)
 
-Write out what a full user interaction looks like from start to finish — tool call by tool call. Use a specific example query.
+FitFindr is an AI thrift-shopping assistant that uses three tools in sequence to help users find secondhand clothing and style it. A search tool finds matching listings from the mock dataset; an outfit suggestion tool uses the top result and the user's existing wardrobe to suggest complete looks; and a fit card tool generates a shareable social-media-style caption that the user could use. If the search returns nothing, the agent stops immediately and tells the user what to try differently instead of passing empty data to the next tool.
 
 **Example user query:** "I'm looking for a vintage graphic tee under $30. I mostly wear baggy jeans and chunky sneakers. What's out there and how would I style it?"
 
 **Step 1:**
-<!-- What does the agent do first? Which tool is called? With what input? -->
+The agent parses the query to extract keywords ("vintage graphic tee"), no explicit size, and a max price of $30. It calls `search_listings(description="vintage graphic tee", size=None, max_price=30.0)`. The tool filters listings.json, keeping only items priced at or under $30, then scores each by how many keywords from the description appear in the title, description, and style_tags. It returns a ranked list. The top result is lst_006: "Graphic Tee, 2003 Tour Bootleg Style", $24, size L, on Depop, with style_tags ["graphic tee", "vintage", "grunge", "streetwear", "band tee"]. The agent stores this in `session["search_results"]` and sets `session["selected_item"]` to lst_006.
 
 **Step 2:**
-<!-- What happens next? What was returned from step 1? What tool is called now? -->
+With the selected item, the agent calls `suggest_outfit(new_item=lst_006, wardrobe=get_example_wardrobe())`. The wardrobe has 10 items including baggy dark-wash jeans (w_001), chunky white sneakers (w_007), black combat boots (w_008), and a vintage black denim jacket (w_006). The LLM receives both the item details and the wardrobe list and returns something like: "Pair this boxy graphic tee with your baggy dark-wash jeans and chunky white sneakers for a classic 90s streetwear look, and tuck the front corner slightly to add shape. For a grungier take, swap the sneakers for your black combat boots and throw the vintage denim jacket on top." The agent stores this in `session["outfit_suggestion"]`.
 
 **Step 3:**
-<!-- Continue until the full interaction is complete -->
+The agent calls `create_fit_card(outfit=session["outfit_suggestion"], new_item=lst_006)`. The LLM receives the outfit description and the item's title, price, and platform, and generates a short casual caption. It returns something like: "found this faded bootleg tee on depop for $24 and it was made for my baggy jeans era 🖤 styled it two ways: chunky sneakers for day, combat boots and a denim jacket when the sun goes down. thrift, don't buy new." The agent stores this in `session["fit_card"]`.
 
 **Final output to user:**
-<!-- What does the user actually see at the end? -->
+The Gradio UI displays three panels: (1) the top listing: title, price, condition, size, platform; (2) the outfit suggestion with specific wardrobe pairings; (3) the fit card caption ready to copy and post.
