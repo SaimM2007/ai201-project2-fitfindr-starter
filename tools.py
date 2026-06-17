@@ -176,3 +176,37 @@ def _fitcard_fallback(new_item: dict) -> str:
         f"Fit card unavailable right now, but here's the short version: "
         f"{new_item['title']} from {new_item['platform']} for ${new_item['price']}."
     )
+
+# ── Tool 4: price_comparison ──────────────────────────────────────────────────
+
+def price_comparison(item: dict) -> str:
+    """
+    Estimate whether the item's price is fair based on comparable listings
+    in the dataset. Comparables are listings in the same category with at
+    least one overlapping style_tag, excluding the item itself.
+    """
+    all_listings = load_listings()
+
+    item_tags = set(item.get("style_tags", []))
+    item_category = item.get("category", "")
+    item_id = item.get("id", "")
+
+    comparables = [
+        l for l in all_listings
+        if l["id"] != item_id
+        and l["category"] == item_category
+        and item_tags & set(l.get("style_tags", []))
+    ]
+
+    if len(comparables) < 2:
+        return "Not enough comparable listings to estimate price fairness."
+
+    avg_price = sum(l["price"] for l in comparables) / len(comparables)
+    item_price = item["price"]
+    direction = "below" if item_price < avg_price else "above"
+
+    return (
+        f"This ${item_price:.2f} {item_category.rstrip('s')} is priced {direction} the average "
+        f"of ${avg_price:.2f} for similar {', '.join(item_tags)} items in the dataset "
+        f"({len(comparables)} comparables found)."
+    )

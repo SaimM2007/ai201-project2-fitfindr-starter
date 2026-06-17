@@ -51,7 +51,9 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
     if session["error"]:
         return session["error"], "", ""
 
-    # Step 5: format session["selected_item"] into a readable listing_text string
+    # Step 5: format session["selected_item"] into a readable listing_text string.
+    # Also appends price_comparison (stretch feature) and size_notice (stretch feature)
+    # if they are present in the session.
     item = session["selected_item"]
     listing_text = (
         f"{item['title']}\n"
@@ -60,8 +62,12 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
         f"Condition: {item['condition']}\n"
         f"Platform: {item['platform']}\n"
         f"Colors: {', '.join(item['colors'])}\n"
-        f"Style: {', '.join(item['style_tags'])}"
+        f"Style: {', '.join(item['style_tags'])}\n"
+        f"\n{session['price_comparison']}"
     )
+
+    if session.get("size_notice"):
+        listing_text = session["size_notice"] + "\n\n" + listing_text
 
     return listing_text, session["outfit_suggestion"], session["fit_card"]
 

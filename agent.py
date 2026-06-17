@@ -23,7 +23,7 @@ import json
 from dotenv import load_dotenv
 from groq import Groq
 
-from tools import search_listings, suggest_outfit, create_fit_card
+from tools import search_listings, suggest_outfit, create_fit_card, price_comparison
 
 load_dotenv()
 
@@ -55,6 +55,8 @@ def _new_session(query: str, wardrobe: dict) -> dict:
         "wardrobe": wardrobe,        # user's wardrobe dict
         "outfit_suggestion": None,   # string returned by suggest_outfit
         "fit_card": None,            # string returned by create_fit_card
+        "price_comparison": None,    # string returned by price_comparison (stretch feature)
+        "size_notice": None,         # set if size filter was removed on retry (stretch feature)
         "error": None,               # set if the interaction ended early
     }
 
@@ -134,9 +136,23 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     max_price = parsed.get("max_price")
 
     # Step 3: call search_listings() with the parsed parameters.
-    # If no results: set session["error"] and return early.
+    # If no results and a size was provided, retry with size=None and notify the user.
+    # (stretch feature: retry logic with fallback)
+    # If still no results: set session["error"] and return early.
     # Do NOT proceed to suggest_outfit with empty input.
     results = search_listings(description, size=size, max_price=max_price)
+
+    if not results and size is not None:
+        # retry with size filter removed
+        results = search_listings(description, size=None, max_price=max_price)
+        if results:
+            session["size_notice"] = (
+                f"No results found for size '{size}', so the size filter was removed. "
+                "Showing the closest matches instead."
+            )
+            session["parsed"]["size"] = None
+            size = None
+
     session["search_results"] = results
 
     if not results:
@@ -153,13 +169,14 @@ def run_agent(query: str, wardrobe: dict) -> dict:
 
     # Step 4: select the item to use (top result)
     session["selected_item"] = results[0]
-    print(f"\n[DEBUG] selected_item: {session['selected_item']['title']}")
+
+    # Step 4b: run price comparison on the selected item (stretch feature)
+    session["price_comparison"] = price_comparison(session["selected_item"])
 
     # Step 5: call suggest_outfit() with the selected item and wardrobe
     session["outfit_suggestion"] = suggest_outfit(
         session["selected_item"], wardrobe
     )
-    print(f"\n[DEBUG] outfit_suggestion going into fit card: {session['outfit_suggestion']}")
 
     # Step 6: call create_fit_card() with the outfit suggestion and selected item
     session["fit_card"] = create_fit_card(
@@ -184,6 +201,7 @@ if __name__ == "__main__":
         print(f"Error: {session['error']}")
     else:
         print(f"Found: {session['selected_item']['title']}")
+        print(f"Price comparison: {session['price_comparison']}")
         print(f"\nOutfit: {session['outfit_suggestion']}")
         print(f"\nFit card: {session['fit_card']}")
 
@@ -194,3 +212,16 @@ if __name__ == "__main__":
     )
     print(f"Error message: {session2['error']}")
     print(f"fit_card is None: {session2['fit_card'] is None}")
+
+    print("\n\n=== Retry path: specific size that won't match ===\n")
+    session3 = run_agent(
+        query="vintage graphic tee size XXL",
+        wardrobe=get_example_wardrobe(),
+    )
+    if session3["size_notice"]:
+        print(f"Notice: {session3['size_notice']}")
+    if session3["error"]:
+        print(f"Error: {session3['error']}")
+    else:
+        print(f"Found: {session3['selected_item']['title']}")
+        print(f"Price comparison: {session3['price_comparison']}")

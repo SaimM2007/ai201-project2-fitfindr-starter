@@ -1,7 +1,6 @@
 # tests/test_tools.py
-from tools import search_listings, suggest_outfit, create_fit_card
+from tools import search_listings, suggest_outfit, create_fit_card, price_comparison
 from utils.data_loader import get_example_wardrobe, get_empty_wardrobe
-
 
 # ── search_listings ───────────────────────────────────────────────────────────
 
@@ -28,7 +27,6 @@ def test_search_results_sorted_by_relevance():
     # the first result should have more matching keywords than the last
     assert len(results) > 1
 
-
 # ── suggest_outfit ────────────────────────────────────────────────────────────
 
 def test_suggest_outfit_with_wardrobe():
@@ -42,7 +40,6 @@ def test_suggest_outfit_empty_wardrobe():
     result = suggest_outfit(item, get_empty_wardrobe())
     assert isinstance(result, str)
     assert len(result) > 0
-
 
 # ── create_fit_card ───────────────────────────────────────────────────────────
 
@@ -63,3 +60,22 @@ def test_create_fit_card_whitespace_outfit():
     item = search_listings("vintage graphic tee", size=None, max_price=50)[0]
     result = create_fit_card("   ", item)
     assert "missing" in result.lower()
+
+# ── price_comparison ──────────────────────────────────────────────────────────
+
+def test_price_comparison_returns_string():
+    item = search_listings("vintage graphic tee", size=None, max_price=50)[0]
+    result = price_comparison(item)
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+def test_price_comparison_no_comparables():
+    # construct a fake item with a category/tags combo unlikely to match anything
+    fake_item = {
+        "id": "fake_999",
+        "category": "accessories",
+        "style_tags": ["nonexistenttag"],
+        "price": 9.99
+    }
+    result = price_comparison(fake_item)
+    assert "Not enough" in result
